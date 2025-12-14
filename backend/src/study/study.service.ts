@@ -93,7 +93,7 @@ export class StudyService {
     return { sessionId: session.id, startTs: session.startTs };
   }
 
-  async endSession(userId: string, sessionId: string, generatePerWeakTopic = 5, successThreshold = 0.6) {
+  async endSession(userId: string, sessionId: string) {
     const session = await this.prisma.studySession.findUnique({ where: { id: sessionId } });
     if (!session) throw new NotFoundException('Study session not found');
     if (session.userId !== userId) throw new ForbiddenException('Not your session');
@@ -111,73 +111,165 @@ export class StudyService {
 
     if (reviews.length === 0) {
       await this.prisma.studySession.update({ where: { id: sessionId }, data: { endTs, cardsReviewed: 0, correctCount: 0 } });
-      return { message: 'No reviews in session', generated: 0, topics: [] };
+      return { message: 'No reviews in session', generated: 0, byDifficulty: [] };
     }
 
-    const scoreFor = (resp: string) => (resp === 'Easy' ? 1 : resp === 'Good' ? 0.75 : resp === 'Hard' ? 0.25 : 0);
+    // Group reviews by difficulty and extract topics
+    type DifficultyGroup = { 
+      difficulty: string; 
+      count: number; 
+      cardsToGenerate: number;
+      reviews: Array<{ card: any; topics: string[]; deckId: string }>;
+    };
+    
+    const difficultyGroups = new Map<string, DifficultyGroup>();
+    const existingCardFronts = new Set<string>();
 
-    // Aggregate by topic inferred from tags or content
-    type TopicStats = { total: number; positives: number; examples: { deckId: string; text: string }[] };
-    const topicStats = new Map<string, TopicStats>();
+    // Get all existing cards in session decks to avoid duplicates
+    const deckIds = [...new Set(reviews.map(r => r.card.deckId))];
+    const existingCards = await this.prisma.card.findMany({
+      where: { deckId: { in: deckIds } },
+      select: { front: true },
+    });
+    existingCards.forEach(c => existingCardFronts.add(c.front.toLowerCase().trim()));
 
     for (const r of reviews) {
-      const s = scoreFor(r.response);
       const texts = [r.card.front, r.card.back, r.card.sourceExcerpt || ''].join('\n');
-      const deckId = r.card.deckId;
-
       const topics = (Array.isArray((r.card as any).tags) && (r.card as any).tags.length > 0)
         ? (r.card as any).tags as string[]
         : await this.ollama.extractTopics(texts);
 
-      for (const t of topics.slice(0, 3)) {
-        const stat = topicStats.get(t) || { total: 0, positives: 0, examples: [] };
-        stat.total += 1;
-        if (s >= 0.75) stat.positives += 1; // Good/Easy considered success
-        // Keep a few examples for generation context
-        if (stat.examples.length < 5) stat.examples.push({ deckId, text: texts });
-        topicStats.set(t, stat);
-      }
-    }
+      const difficulty = r.response; // Again, Hard, Good, Easy
+      
+      if (!difficultyGroups.has(difficulty)) {
+        // Determine how many cards to generate based on difficulty
+        let cardsToGenerate = 0;
+        if (difficulty === 'Again') cardsToGenerate = 4; // Too difficult: 3-5 cards (using 4)
+        else if (difficulty === 'Hard') cardsToGenerate = 2; // Difficult: 1-2 cards
+        else if (difficulty === 'Good') cardsToGenerate = 1; // Good: 1 card
+        else if (difficulty === 'Easy') cardsToGenerate = 0; // Easy: no card
 
-    // Compute weak topics
-    const weakTopics = [...topicStats.entries()]
-      .map(([topic, stat]) => ({ topic, success: stat.total ? stat.positives / stat.total : 0, stat }))
-      .filter((t) => t.success < successThreshold)
-      .sort((a, b) => a.success - b.success);
-
-    // Prepare generation per topic
-    let totalGenerated = 0;
-    const perTopicResults: { topic: string; success: number; generated: number }[] = [];
-
-    for (const wt of weakTopics) {
-      // Build context from examples belonging to same deck (prefer session deck if set)
-      const targetDeckId = session.deckId || (wt.stat.examples[0]?.deckId ?? reviews[0].card.deckId);
-      const contextText = wt.stat.examples.map((e) => e.text).join('\n\n').substring(0, 12000);
-
-      // Summarize to keep prompt compact
-      const summary = await this.ollama.summarizeText(contextText, 800);
-      const genCards = await this.ollama.generateFlashcards(summary, wt.topic, generatePerWeakTopic);
-
-      // Persist cards into target deck
-      for (const gc of genCards) {
-        await this.prisma.card.create({
-          data: {
-            deckId: targetDeckId,
-            type: (gc.type as string) || 'basic',
-            front: gc.front,
-            back: gc.back,
-            sourceExcerpt: `Adaptive generation for weak topic: ${wt.topic}`,
-            tags: Array.isArray(gc.tags) ? gc.tags : [wt.topic, 'adaptive'],
-          },
-        }).then(async (card) => {
-          await this.prisma.schedulerState.create({
-            data: { cardId: card.id, ef: 2.5, intervalDays: 0, repetitions: 0, nextDueTs: new Date() },
-          });
+        difficultyGroups.set(difficulty, {
+          difficulty,
+          count: 0,
+          cardsToGenerate,
+          reviews: [],
         });
       }
 
-      totalGenerated += genCards.length;
-      perTopicResults.push({ topic: wt.topic, success: wt.success, generated: genCards.length });
+      const group = difficultyGroups.get(difficulty)!;
+      group.count += 1;
+      group.reviews.push({ card: r.card, topics: topics.slice(0, 3), deckId: r.card.deckId });
+    }
+
+    // Generate cards for each difficulty group
+    let totalGenerated = 0;
+    const generationResults: Array<{ difficulty: string; count: number; generated: number; topics: string[] }> = [];
+
+    for (const [difficulty, group] of difficultyGroups.entries()) {
+      if (group.cardsToGenerate === 0 || group.reviews.length === 0) {
+        generationResults.push({ difficulty, count: group.count, generated: 0, topics: [] });
+        continue;
+      }
+
+      // Aggregate topics from all reviews in this difficulty group
+      const topicSet = new Set<string>();
+      group.reviews.forEach(r => r.topics.forEach(t => topicSet.add(t)));
+      const uniqueTopics = Array.from(topicSet).slice(0, 5);
+
+      // Build context from the difficult cards
+      const contextCards = group.reviews.map(r => 
+        `Q: ${r.card.front}\nA: ${r.card.back}\nTopics: ${r.topics.join(', ')}`
+      ).join('\n\n');
+
+      const targetDeckId = session.deckId || group.reviews[0].deckId;
+      
+      // Generate cards for each topic
+      const cardsPerTopic = Math.ceil(group.cardsToGenerate / Math.max(1, uniqueTopics.length));
+      let generatedInGroup = 0;
+
+      for (const topic of uniqueTopics) {
+        const prompt = `You are creating ${cardsPerTopic} NEW flashcards about "${topic}" for a student who found this difficult.
+
+CONTEXT - Student struggled with these cards:
+${contextCards.substring(0, 6000)}
+
+INSTRUCTIONS:
+1. Create ${cardsPerTopic} COMPLETELY NEW questions about "${topic}"
+2. Questions must be DIFFERENT from the context cards above
+3. Focus on reinforcing understanding of "${topic}"
+4. Make questions clear and answers complete
+5. Each card should test a unique aspect of "${topic}"
+
+Return ONLY a valid JSON array:
+[
+  {
+    "front": "New unique question about ${topic}?",
+    "back": "Clear answer",
+    "tags": ["${topic}"]
+  }
+]
+
+Generate exactly ${cardsPerTopic} NEW flashcards. Return ONLY the JSON array.`;
+
+        try {
+          const response = await this.ollama['ollama'].generate({
+            model: this.ollama['model'],
+            prompt,
+            stream: false,
+            options: {
+              temperature: 0.8, // Higher creativity to avoid duplicates
+              num_predict: 1500,
+            },
+          });
+
+          const content = response.response.trim();
+          const jsonMatch = content.match(/\[[\s\S]*\]/);
+          if (!jsonMatch) continue;
+
+          const genCards = JSON.parse(jsonMatch[0]);
+          if (!Array.isArray(genCards)) continue;
+
+          // Filter out duplicates and persist
+          for (const gc of genCards) {
+            if (!gc.front || !gc.back) continue;
+            
+            const normalizedFront = gc.front.toLowerCase().trim();
+            if (existingCardFronts.has(normalizedFront)) {
+              console.log(`[Study] Skipping duplicate card: ${gc.front.substring(0, 50)}...`);
+              continue;
+            }
+
+            const card = await this.prisma.card.create({
+              data: {
+                deckId: targetDeckId,
+                type: 'basic',
+                front: gc.front.trim(),
+                back: gc.back.trim(),
+                sourceExcerpt: `Generated after ${difficulty} response - Topic: ${topic}`,
+                tags: [topic, 'adaptive', difficulty.toLowerCase()],
+              },
+            });
+
+            await this.prisma.schedulerState.create({
+              data: { cardId: card.id, ef: 2.5, intervalDays: 0, repetitions: 0, nextDueTs: new Date() },
+            });
+
+            existingCardFronts.add(normalizedFront);
+            generatedInGroup += 1;
+            totalGenerated += 1;
+          }
+        } catch (error) {
+          console.error(`[Study] Generation error for topic ${topic}:`, error);
+        }
+      }
+
+      generationResults.push({
+        difficulty,
+        count: group.count,
+        generated: generatedInGroup,
+        topics: uniqueTopics,
+      });
     }
 
     const correctCount = reviews.filter((r) => r.response === 'Good' || r.response === 'Easy').length;
@@ -192,15 +284,15 @@ export class StudyService {
             reviews.reduce((acc, r) => acc + (r.latencyMs || 0), 0) / Math.max(1, reviews.length)
           ),
           accuracy: Math.round((correctCount / reviews.length) * 100),
-          weakTopics: perTopicResults,
+          generationResults,
         } as any,
       },
     });
 
     return {
-      message: totalGenerated > 0 ? 'Adaptive cards generated for weak topics' : 'No weak topics detected',
+      message: totalGenerated > 0 ? `Generated ${totalGenerated} new cards based on difficulty` : 'No cards needed',
       generated: totalGenerated,
-      topics: perTopicResults,
+      byDifficulty: generationResults,
     };
   }
 }

@@ -23,15 +23,7 @@ export class StudyController {
   }
 
   @Post('session/end')
-  endSession(
-    @Request() req,
-    @Body()
-    body: {
-      sessionId: string;
-      generatePerWeakTopic?: number; // cards per weak topic
-      successThreshold?: number; // e.g., 0.6
-    },
-  ) {
-    return this.studyService.endSession(req.user.userId, body.sessionId, body.generatePerWeakTopic, body.successThreshold);
+  endSession(@Request() req, @Body() body: { sessionId: string }) {
+    return this.studyService.endSession(req.user.userId, body.sessionId);
   }
 }
