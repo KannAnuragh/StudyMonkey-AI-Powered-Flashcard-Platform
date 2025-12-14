@@ -16,4 +16,22 @@ export class StudyController {
   recordReview(@Request() req, @Body() body: { cardId: string; response: string; latency: number }) {
     return this.studyService.recordReview(req.user.userId, body.cardId, body.response, body.latency);
   }
+
+  @Post('session/start')
+  startSession(@Request() req, @Body() body: { deckId?: string }) {
+    return this.studyService.startSession(req.user.userId, body.deckId);
+  }
+
+  @Post('session/end')
+  endSession(
+    @Request() req,
+    @Body()
+    body: {
+      sessionId: string;
+      generatePerWeakTopic?: number; // cards per weak topic
+      successThreshold?: number; // e.g., 0.6
+    },
+  ) {
+    return this.studyService.endSession(req.user.userId, body.sessionId, body.generatePerWeakTopic, body.successThreshold);
+  }
 }
