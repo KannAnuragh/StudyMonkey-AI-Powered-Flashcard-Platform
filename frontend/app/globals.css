@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: 214 51% 98%;
+    --foreground: 210 44% 12%;
+    --card: 0 0% 100%;
+    --card-foreground: 210 44% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 210 44% 12%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 38 98% 54%;
+    --secondary-foreground: 210 44% 12%;
+    --muted: 212 33% 92%;
+    --muted-foreground: 214 19% 38%;
+    --accent: 271 91% 65%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 214 32% 88%;
+    --input: 214 32% 88%;
+    --ring: 199 89% 48%;
+    --radius: 0.9rem;
+  }
+ 
+  .dark {
+    --background: 223 29% 8%;
+    --foreground: 210 40% 98%;
+    --card: 223 29% 10%;
+    --card-foreground: 210 40% 98%;
+    --popover: 223 29% 10%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 199 89% 48%;
+    --primary-foreground: 223 29% 10%;
+    --secondary: 38 92% 62%;
+    --secondary-foreground: 223 29% 10%;
+    --muted: 223 29% 14%;
+    --muted-foreground: 215 20% 78%;
+    --accent: 271 91% 65%;
+    --accent-foreground: 223 29% 10%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 223 29% 16%;
+    --input: 223 29% 16%;
+    --ring: 199 89% 48%;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-slate-200;
+  }
+  body {
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--background));
+    @apply antialiased;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(15, 168, 238, 0.09), transparent 25%),
+      radial-gradient(circle at 80% 0%, rgba(255, 185, 64, 0.08), transparent 28%),
+      radial-gradient(circle at 50% 70%, rgba(143, 104, 255, 0.08), transparent 30%);
+    background-attachment: fixed;
+  }
+}
+
+/* Animations */
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+.animate-blob {
+  animation: blob 7s infinite;
+}
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl;
+  }
+
+  .soft-card {
+    @apply rounded-2xl border border-slate-200/70 bg-white shadow-[0_20px_60px_rgba(15,23,42,0.12)];
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide;
+  }
+
+  .feature-grid {
+    background: linear-gradient(135deg, rgba(15,168,238,0.12), rgba(255,185,64,0.16));
+    @apply rounded-3xl p-px;
+  }
+}

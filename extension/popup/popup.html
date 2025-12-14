@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { width: 300px; padding: 10px; font-family: sans-serif; }
+    label { display: block; font-size: 12px; margin-top: 8px; color: #334155; }
+    input { width: 100%; padding: 8px; border: 1px solid #e2e8f0; border-radius: 6px; margin-top: 4px; }
+    button { width: 100%; padding: 10px; margin: 8px 0; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    #status { margin-top: 10px; font-size: 13px; text-align: left; color: #0f172a; }
+  </style>
+</head>
+<body>
+  <h3>StudyMonkey Clipper</h3>
+  <label for="apiBase">API Base URL</label>
+  <input id="apiBase" type="text" placeholder="http://localhost:4000" />
+
+  <label for="token">JWT Token</label>
+  <input id="token" type="text" placeholder="Paste your token" />
+
+  <label for="topic">Topic (deck title)</label>
+  <input id="topic" type="text" placeholder="e.g., Neural Networks" />
+
+  <button id="saveConfig">Save Settings</button>
+  <button id="clipPage">Clip This Page</button>
+
+  <div id="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

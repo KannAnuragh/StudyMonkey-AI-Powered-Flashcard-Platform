@@ -1,0 +1,42 @@
+{
+  "name": "ai-flash-card",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@nestjs/bull": "^11.0.4",
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.9",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/passport": "^11.0.5",
+    "@nestjs/platform-express": "^11.1.9",
+    "@prisma/client": "^7.1.0",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@radix-ui/react-toast": "^1.2.15",
+    "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
+    "bull": "^4.16.5",
+    "cheerio": "^1.1.2",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.3",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.559.0",
+    "next-auth": "^4.24.13",
+    "openai": "^6.10.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "recharts": "^3.5.1",
+    "redis": "^5.10.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zustand": "^5.0.9"
+  }
+}

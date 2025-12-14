@@ -1,0 +1,42 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+
+# Builds
+frontend/.next/
+frontend/out/
+backend/dist/
+extension/dist/
+coverage/
+.turbo/
+.cache/
+
+# Env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.crt
+*.cer
+*.p12
+*.keystore
+*.jks
+*.mobileprovision
+*.provisionprofile
+
+# DB dumps and local data
+*.sql
+*.dump
+dump*.*
+prisma/dev.db
+prisma/dev.db-journal
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.vscode/
+node_modules

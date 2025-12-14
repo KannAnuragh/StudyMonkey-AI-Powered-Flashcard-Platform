@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "StudyMonkey Clipper",
+  "version": "1.0.0",
+  "description": "Clip web pages to create flashcards",
+  "permissions": ["activeTab", "storage"],
+  "host_permissions": [
+    "http://localhost:3000/*",
+    "http://localhost:4000/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}

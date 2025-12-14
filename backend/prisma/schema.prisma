@@ -1,0 +1,205 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ImportStatus {
+  pending
+  processing
+  completed
+  failed
+}
+
+model User {
+  id             String          @id @default(uuid())
+  email          String          @unique
+  hashedPassword String
+  provider       String          @default("local") // local, google, etc.
+  createdAt      DateTime        @default(now())
+  plan           String          @default("free")
+  
+  decks          Deck[]
+  studySessions  StudySession[]
+  reviews        Review[]
+  importJobs     ImportJob[]
+  templates      CardTemplate[]
+  goals          LearningGoal[]
+  analytics      UserAnalytics?
+
+  @@map("users")
+}
+
+model Deck {
+  id          String   @id @default(uuid())
+  ownerId     String
+  title       String
+  description String?
+  visibility  String   @default("private") // private, public
+  tags        String[]
+  topic       String?
+  difficulty  String   @default("medium") // beginner, medium, advanced
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  cards       Card[]
+  importJobs  ImportJob[]
+  analytics   DeckAnalytics?
+
+  @@map("decks")
+}
+
+model Card {
+  id             String   @id @default(uuid())
+  deckId         String
+  type           String   @default("basic") // basic, cloze, image-occlusion, etc.
+  front          String
+  back           String
+  fields         Json?    // flexible fields
+  mediaRefs      Json?    // array of {type, url, caption}
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  sourceUrl      String?
+  sourceExcerpt  String?
+  confidenceScore Float?   @default(1.0)
+  tags           String[]
+
+  deck           Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  reviews        Review[]
+  schedulerState SchedulerState?
+
+  @@map("cards")
+}
+
+model StudySession {
+  id        String   @id @default(uuid())
+  userId    String
+  deckId    String?
+  startTs   DateTime @default(now())
+  endTs     DateTime?
+  cardsReviewed Int @default(0)
+  correctCount  Int @default(0)
+  stats     Json?    // {avgLatency, accuracy, difficulty}
+  mode      String   @default("mixed") // mixed, weak-only, multiple-choice
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("study_sessions")
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  cardId    String
+  response  String   // Again, Hard, Good, Easy
+  ease      Float
+  latencyMs Int
+  timestamp DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  card      Card     @relation(fields: [cardId], references: [id])
+
+  @@map("reviews")
+}
+
+model SchedulerState {
+  cardId       String   @id
+  ef           Float    @default(2.5)
+  intervalDays Float    @default(0)
+  lastReviewed DateTime?
+  repetitions  Int      @default(0)
+  nextDueTs    DateTime @default(now())
+
+  card         Card     @relation(fields: [cardId], references: [id])
+
+  @@map("scheduler_state")
+}
+
+model ImportJob {
+  id            String   @id @default(uuid())
+  userId        String
+  sourceType    String   // url, pdf, etc.
+  sourceMeta    Json?    // url, filename
+  status        ImportStatus @default(pending)
+  resultSummary String?
+  error         String?
+  deckId        String?  // optional deck created/updated by job
+  previewCards  Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  completedAt   DateTime?
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deck          Deck?    @relation(fields: [deckId], references: [id], onDelete: SetNull)
+
+  @@map("import_jobs")
+}
+
+model CardTemplate {
+  id            String   @id @default(uuid())
+  userId        String
+  name          String
+  description   String?
+  type          String   // basic, cloze, image-occlusion
+  fieldNames    String[] // e.g., ["Question", "Answer", "Example"]
+  cssClass      String?
+  createdAt     DateTime @default(now())
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("card_templates")
+}
+
+model LearningGoal {
+  id            String   @id @default(uuid())
+  userId        String
+  targetCards   Int      @default(20) // cards per day
+  targetDays    Int      @default(7)  // streak days
+  currentStreak Int      @default(0)
+  createdAt     DateTime @default(now())
+  lastUpdated   DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("learning_goals")
+}
+
+model DeckAnalytics {
+  id            String   @id @default(uuid())
+  deckId        String
+  totalCards    Int      @default(0)
+  mastered      Int      @default(0)       // reviewed >= 5 times
+  learning      Int      @default(0)       // reviewed 1-4 times
+  new           Int      @default(0)       // never reviewed
+  avgEase       Float    @default(2.5)
+  retention     Float    @default(0)       // recall rate
+  lastReviewTs  DateTime?
+  updatedAt     DateTime @updatedAt
+
+  deck          Deck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+
+  @@map("deck_analytics")
+  @@unique([deckId])
+}
+
+model UserAnalytics {
+  id            String   @id @default(uuid())
+  userId        String
+  totalCards    Int      @default(0)
+  decksCreated  Int      @default(0)
+  totalReviews  Int      @default(0)
+  avgAccuracy   Float    @default(0)
+  totalTimeMs   BigInt   @default(0)
+  currentStreak Int      @default(0)
+  lastReviewTs  DateTime?
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_analytics")
+  @@unique([userId])
+}
