@@ -5,7 +5,6 @@ import './globals.css';
 const plusJakarta = Plus_Jakarta_Sans({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'SmartSRS',
   title: 'StudyMonkey',
   description: 'AI-Powered Spaced Repetition System',
 };
