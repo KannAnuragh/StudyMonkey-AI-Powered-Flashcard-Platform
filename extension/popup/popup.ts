@@ -24,7 +24,8 @@ document.getElementById('saveConfig')?.addEventListener('click', () => {
 document.getElementById('clipPage')?.addEventListener('click', async () => {
   statusDiv.textContent = 'Clipping...';
 
-  const apiBase = apiBaseInput.value || 'http://localhost:4000';
+  // const apiBase = apiBaseInput.value || 'http://localhost:4000';
+  const apiBase = apiBaseInput.value || 'https://studymonkey-backend.onrender.com';
   const token = tokenInput.value?.trim();
   if (!token) {
     statusDiv.textContent = 'Add your JWT token first.';

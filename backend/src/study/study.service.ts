@@ -4,12 +4,10 @@ import { OllamaService } from '../import/ollama.service';
 
 @Injectable()
 export class StudyService {
-  private ollama: OllamaService;
-
-  constructor(private prisma: PrismaService, ollama?: OllamaService) {
-    // Allow unit tests to construct without DI
-    this.ollama = ollama ?? new OllamaService();
-  }
+  constructor(
+    private prisma: PrismaService,
+    private ollama: OllamaService,
+  ) {}
 
   async getDueCards(userId: string, deckId?: string) {
     return this.prisma.schedulerState.findMany({
@@ -94,6 +92,7 @@ export class StudyService {
   }
 
   async endSession(userId: string, sessionId: string) {
+    console.log(`[Study Service] Ending session ${sessionId} for user ${userId}`);
     const session = await this.prisma.studySession.findUnique({ where: { id: sessionId } });
     if (!session) throw new NotFoundException('Study session not found');
     if (session.userId !== userId) throw new ForbiddenException('Not your session');
@@ -108,6 +107,8 @@ export class StudyService {
       },
       include: { card: true },
     });
+
+    console.log(`[Study Service] Found ${reviews.length} reviews in session`);
 
     if (reviews.length === 0) {
       await this.prisma.studySession.update({ where: { id: sessionId }, data: { endTs, cardsReviewed: 0, correctCount: 0 } });
@@ -166,7 +167,11 @@ export class StudyService {
     let totalGenerated = 0;
     const generationResults: Array<{ difficulty: string; count: number; generated: number; topics: string[] }> = [];
 
+    console.log(`[Study Service] Processing ${difficultyGroups.size} difficulty groups for card generation`);
+
     for (const [difficulty, group] of difficultyGroups.entries()) {
+      console.log(`[Study Service] Group ${difficulty}: ${group.count} reviews, ${group.cardsToGenerate} cards to generate`);
+      
       if (group.cardsToGenerate === 0 || group.reviews.length === 0) {
         generationResults.push({ difficulty, count: group.count, generated: 0, topics: [] });
         continue;
@@ -213,21 +218,8 @@ Return ONLY a valid JSON array:
 Generate exactly ${cardsPerTopic} NEW flashcards. Return ONLY the JSON array.`;
 
         try {
-          const response = await this.ollama['ollama'].generate({
-            model: this.ollama['model'],
-            prompt,
-            stream: false,
-            options: {
-              temperature: 0.8, // Higher creativity to avoid duplicates
-              num_predict: 1500,
-            },
-          });
-
-          const content = response.response.trim();
-          const jsonMatch = content.match(/\[[\s\S]*\]/);
-          if (!jsonMatch) continue;
-
-          const genCards = JSON.parse(jsonMatch[0]);
+          const genCards = await this.ollama.generateAdaptiveCards(topic, contextCards, cardsPerTopic);
+          
           if (!Array.isArray(genCards)) continue;
 
           // Filter out duplicates and persist

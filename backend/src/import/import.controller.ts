@@ -1,5 +1,6 @@
 import { Controller, Post, Body, Get, Param, UseGuards, Request, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { ImportService } from './import.service';
+import { OllamaService } from './ollama.service';
 import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImportUrlDto } from './dto/import-url.dto';
@@ -7,7 +8,10 @@ import { ImportFileDto } from './dto/import-file.dto';
 
 @Controller('import')
 export class ImportController {
-  constructor(private importService: ImportService) {}
+  constructor(
+    private importService: ImportService,
+    private ollamaService: OllamaService,
+  ) {}
 
   @Post('url')
   @UseGuards(AuthGuard('jwt'))
@@ -31,5 +35,10 @@ export class ImportController {
   @UseGuards(AuthGuard('jwt'))
   getJobStatus(@Request() req, @Param('id') id: string) {
     return this.importService.getJobStatus(req.user.userId, id);
+  }
+
+  @Get('ollama/status')
+  async getOllamaStatus() {
+    return this.ollamaService.getStatus();
   }
 }

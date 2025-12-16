@@ -1,20 +1,52 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Ollama } from 'ollama';
 
 @Injectable()
 export class OllamaService {
   private ollama: Ollama;
-  private readonly model = 'qwen2.5:0.5b'; // User's installed model
+  private readonly model: string;
+  private readonly logger = new Logger(OllamaService.name);
+  private isConnected = false;
 
   constructor() {
-    this.ollama = new Ollama({ host: 'http://localhost:11434' });
+    const ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
+    const ollamaModel = process.env.OLLAMA_MODEL || 'qwen2.5:0.5b';
+    
+    this.logger.log(`Initializing Ollama: host=${ollamaHost}, model=${ollamaModel}`);
+    this.ollama = new Ollama({ host: ollamaHost });
+    this.model = ollamaModel;
+    
+    // Test connection on startup
+    this.testConnection().then(connected => {
+      this.isConnected = connected;
+      if (!connected) {
+        this.logger.error(`Failed to connect to Ollama at ${ollamaHost}`);
+        this.logger.error('Please ensure Ollama is running and accessible.');
+        this.logger.error('Set OLLAMA_HOST environment variable to your Ollama server URL.');
+      } else {
+        this.logger.log(`Successfully connected to Ollama at ${ollamaHost}`);
+      }
+    });
+  }
+
+  private async ensureConnection(): Promise<void> {
+    if (!this.isConnected) {
+      const ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
+      throw new Error(
+        `Ollama is not available at ${ollamaHost}. ` +
+        `Please ensure Ollama is running and accessible. ` +
+        `Set OLLAMA_HOST environment variable to configure the connection.`
+      );
+    }
   }
 
   async generateFlashcards(text: string, topic: string, count: number = 30): Promise<any[]> {
-    console.log(`[Ollama Service] Generating ${count} flashcards for topic: ${topic}`);
-    console.log(`[Ollama Service] Content length: ${text.length} characters`);
+    await this.ensureConnection();
     
-    const prompt = `You are an expert educator creating flashcards for students. 
+    this.logger.log(`Generating ${count} flashcards for topic: ${topic}`);
+    this.logger.log(`Content length: ${text.length} characters`);
+    
+    const prompt = `You are an expert educator creating flashcards for students.
 
 Given the following content about "${topic}", generate ${count} high-quality flashcards.
 
@@ -39,54 +71,46 @@ Return ONLY a valid JSON array in this exact format:
 
 Generate exactly ${count} flashcards. Return ONLY the JSON array, no other text.`;
 
-    try {
-      console.log(`[Ollama Service] Calling Ollama with model: ${this.model}`);
-      const response = await this.ollama.generate({
-        model: this.model,
-        prompt,
-        stream: false,
-        options: {
-          temperature: 0.7,
-          num_predict: 2000,
-        },
-      });
+    this.logger.log(`Calling Ollama with model: ${this.model}`);
+    const response = await this.ollama.generate({
+      model: this.model,
+      prompt,
+      stream: false,
+      options: {
+        temperature: 0.7,
+        num_predict: 2000,
+      },
+    });
 
-      console.log(`[Ollama Service] Received response from Ollama`);
-      // Parse the response
-      const content = response.response.trim();
-      
-      // Try to extract JSON from response
-      let jsonStr = content;
-      const jsonMatch = content.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[0];
-      }
-
-      const cards = JSON.parse(jsonStr);
-      
-      if (!Array.isArray(cards)) {
-        throw new Error('Response is not an array');
-      }
-
-      // Validate and clean cards
-      const validCards = cards
-        .filter((card) => card.front && card.back)
-        .map((card) => ({
-          front: card.front.trim(),
-          back: card.back.trim(),
-          tags: card.tags || [],
-          type: 'basic',
-        }));
-      
-      console.log(`[Ollama Service] Successfully generated ${validCards.length} valid cards`);
-      return validCards;
-    } catch (error) {
-      console.error('[Ollama Service] Generation error:', error);
-      console.log('[Ollama Service] Using fallback card generation...');
-      
-      // Fallback: create basic cards from sentences
-      return this.createFallbackCards(text, count);
+    this.logger.log(`Received response from Ollama`);
+    // Parse the response
+    const content = response.response.trim();
+    
+    // Try to extract JSON from response
+    let jsonStr = content;
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[0];
     }
+
+    const cards = JSON.parse(jsonStr);
+    
+    if (!Array.isArray(cards)) {
+      throw new Error('Response is not an array');
+    }
+
+    // Validate and clean cards
+    const validCards = cards
+      .filter((card) => card.front && card.back)
+      .map((card) => ({
+        front: card.front.trim(),
+        back: card.back.trim(),
+        tags: card.tags || [],
+        type: 'basic',
+      }));
+    
+    this.logger.log(`Successfully generated ${validCards.length} valid cards`);
+    return validCards;
   }
 
   async extractTopics(text: string): Promise<string[]> {
@@ -151,34 +175,6 @@ SUMMARY:`;
     }
   }
 
-  private createFallbackCards(text: string, count: number): any[] {
-    const sentences = text
-      .split(/[.!?]+/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 20 && s.length < 200);
-
-    const cards = [];
-    for (let i = 0; i < Math.min(count, sentences.length - 1); i++) {
-      const sentence = sentences[i];
-      const words = sentence.split(' ');
-      
-      if (words.length > 5) {
-        // Create a fill-in-the-blank style card
-        const blankIndex = Math.floor(words.length / 2);
-        const answer = words[blankIndex];
-        words[blankIndex] = '____';
-        
-        cards.push({
-          front: words.join(' ') + '?',
-          back: answer,
-          type: 'basic',
-        });
-      }
-    }
-
-    return cards.slice(0, count);
-  }
-
   private extractKeywords(text: string): string[] {
     // Simple frequency-based keyword extraction
     const words = text
@@ -216,5 +212,79 @@ SUMMARY:`;
       console.error('Failed to get models:', error);
       return [];
     }
+  }
+
+  async generateAdaptiveCards(
+    topic: string,
+    contextCards: string,
+    cardsPerTopic: number,
+  ): Promise<any[]> {
+    await this.ensureConnection();
+    
+    const prompt = `You are creating ${cardsPerTopic} NEW flashcards about "${topic}" for a student who found this difficult.
+
+CONTEXT - Student struggled with these cards:
+${contextCards.substring(0, 6000)}
+
+INSTRUCTIONS:
+1. Create ${cardsPerTopic} COMPLETELY NEW questions about "${topic}"
+2. Questions must be DIFFERENT from the context cards above
+3. Focus on reinforcing understanding of "${topic}"
+4. Make questions clear and answers complete
+5. Each card should test a unique aspect of "${topic}"
+
+Return ONLY a valid JSON array:
+[
+  {
+    "front": "New unique question about ${topic}?",
+    "back": "Clear answer",
+    "tags": ["${topic}"]
+  }
+]
+
+Generate exactly ${cardsPerTopic} NEW flashcards. Return ONLY the JSON array.`;
+
+    const response = await this.ollama.generate({
+      model: this.model,
+      prompt,
+      stream: false,
+      options: {
+        temperature: 0.8,
+        num_predict: 1500,
+      },
+    });
+
+    const content = response.response.trim();
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error('Ollama did not return valid JSON');
+    }
+
+    const genCards = JSON.parse(jsonMatch[0]);
+    if (!Array.isArray(genCards)) {
+      throw new Error('Ollama response is not an array');
+    }
+
+    return genCards
+      .filter((gc) => gc.front && gc.back)
+      .map((gc) => ({
+        front: gc.front.trim(),
+        back: gc.back.trim(),
+        tags: gc.tags || [topic],
+      }));
+  }
+
+  async getStatus(): Promise<{ connected: boolean; host: string; model: string; message: string }> {
+    const host = process.env.OLLAMA_HOST || 'http://localhost:11434';
+    const message = this.isConnected 
+      ? `✅ Connected to Ollama at ${host}` 
+      : `❌ Failed to connect to Ollama at ${host}`;
+    
+    return {
+      connected: this.isConnected,
+      host,
+      model: this.model,
+      message,
+    };
   }
 }
