@@ -12,4 +12,12 @@ export class CreateDeckDto {
   @IsString()
   @IsOptional()
   visibility?: string;
+
+  @IsString()
+  @IsOptional()
+  mode?: string; // standard | language
+
+  @IsString()
+  @IsOptional()
+  languageCode?: string; // e.g., 'es', 'fr'
 }

@@ -274,6 +274,87 @@ Generate exactly ${cardsPerTopic} NEW flashcards. Return ONLY the JSON array.`;
       }));
   }
 
+  async generateLanguageFlashcards(params: {
+    text: string;
+    topic: string;
+    languageCode: string;
+    cardTypes?: string[];
+    level?: string;
+    count?: number;
+  }): Promise<any[]> {
+    await this.ensureConnection();
+    const { text, topic, languageCode, cardTypes = ['vocab','sentence','cloze','grammar'], level = 'beginner', count = 40 } = params;
+
+    const typeInstructions = `
+VOCABULARY CARDS:
+- type: "vocab"
+- front: the target language word alone (no translation)
+- back: concise translation (English), part of speech, one example sentence
+- fields: { "word": string, "translation": string, "partOfSpeech": string, "example": string }
+
+SENTENCE TRANSLATION CARDS:
+- type: "sentence"
+- front: "Translate: <sentence in ${languageCode}>"
+- back: translation in English; keep punctuation
+- fields: { "sentence": string, "translation": string }
+
+CLOZE (FILL-IN-THE-BLANK) CARDS:
+- type: "cloze"
+- front: sentence with one blank (use "___")
+- back: the missing word only
+- fields: { "sentence": string, "answer": string, "hint": string }
+
+GRAMMAR PATTERN CARDS:
+- type: "grammar"
+- front: short prompt explaining the pattern and asking to identify/apply (no long paragraphs)
+- back: rule explanation and the correct form
+- fields: { "rule": string, "pattern": string, "example": string, "explanation": string }
+`;
+
+    const prompt = `You are a language tutor creating flashcards from a book excerpt.
+
+TARGET LANGUAGE: ${languageCode}
+LEVEL: ${level}
+TOPIC: ${topic}
+ALLOWED CARD TYPES: ${cardTypes.join(', ')}
+TOTAL CARDS: ${count}
+
+SOURCE TEXT (excerpt):
+${text.substring(0, 8000)}
+
+INSTRUCTIONS:
+1) Extract useful items (words, collocations, sentences, grammar patterns) from the SOURCE TEXT only
+2) Make cards concise and suitable for spaced repetition
+3) Use the TARGET LANGUAGE exactly for the front when relevant
+4) Avoid duplicates; ensure variety across requested card types
+5) Prefer high-frequency and context-relevant items
+6) Keep answers accurate and short
+
+CARD FORMATS:
+${typeInstructions}
+
+Return ONLY a valid JSON array of cards. Each object MUST have keys: {"type","front","back","fields"}.
+Generate exactly ${count} cards in total.`;
+
+    const response = await this.ollama.generate({ model: this.model, prompt, stream: false, options: { temperature: 0.7, num_predict: 2500 } });
+    const content = response.response.trim();
+    const jsonMatch = content.match(/\[[\s\S]*\]/);
+    const jsonStr = jsonMatch ? jsonMatch[0] : content;
+    const cards = JSON.parse(jsonStr);
+
+    if (!Array.isArray(cards)) throw new Error('Language cards response is not an array');
+
+    return cards
+      .filter((c) => c.type && c.front && c.back && typeof c.fields === 'object')
+      .map((c) => ({
+        type: String(c.type).toLowerCase(),
+        front: String(c.front).trim(),
+        back: String(c.back).trim(),
+        fields: c.fields || {},
+        languageCode,
+        tags: ["language", languageCode, topic].filter(Boolean),
+      }));
+  }
   async getStatus(): Promise<{ connected: boolean; host: string; model: string; message: string }> {
     const host = process.env.OLLAMA_HOST || 'http://localhost:11434';
     const message = this.isConnected 

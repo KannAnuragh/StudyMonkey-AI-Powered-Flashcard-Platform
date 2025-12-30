@@ -12,6 +12,7 @@ import { ImportStatus } from '@prisma/client';
 import { ImportUrlDto } from './dto/import-url.dto';
 import { ImportFileDto } from './dto/import-file.dto';
 import { ImportProcessor } from './import.processor';
+import { LanguageImportDto } from './dto/language-import.dto';
 
 @Injectable()
 export class ImportService {
@@ -156,6 +157,73 @@ export class ImportService {
         removeOnFail: false,
       },
     );
+
+    return job;
+  }
+
+  async importLanguageText(userId: string, dto: LanguageImportDto) {
+    if (!dto.text || !dto.languageCode) {
+      throw new BadRequestException('text and languageCode required');
+    }
+
+    const deckId = await this.ensureDeck(userId, dto.topic, dto.deckId);
+
+    // Ensure deck is marked as language mode
+    await this.prisma.deck.update({
+      where: { id: deckId },
+      data: {
+        // Cast to any to allow new fields before Prisma client re-generation
+        ...( { mode: 'language', languageCode: dto.languageCode } as any ),
+      },
+    });
+
+    const job = await this.prisma.importJob.create({
+      data: {
+        userId,
+        sourceType: 'language',
+        sourceMeta: { languageCode: dto.languageCode, topic: dto.topic, cardTypes: dto.cardTypes, level: dto.level },
+        status: ImportStatus.pending,
+        deckId,
+      },
+    });
+
+    if (this.importQueue) {
+      await this.importQueue.add(
+        'process-language',
+        {
+          jobId: job.id,
+          userId,
+          deckId,
+          text: dto.text,
+          languageCode: dto.languageCode,
+          cardTypes: dto.cardTypes,
+          level: dto.level,
+          topic: dto.topic,
+        },
+        { attempts: 2, backoff: { type: 'exponential', delay: 4000 } },
+      );
+    } else if (this.processor) {
+      // Sync processing fallback
+      setImmediate(async () => {
+        try {
+          await this.processor.process({
+            data: {
+              jobId: job.id,
+              userId,
+              deckId,
+              text: dto.text,
+              languageCode: dto.languageCode,
+              cardTypes: dto.cardTypes,
+              level: dto.level,
+              topic: dto.topic,
+              sourceType: 'language',
+            },
+          } as any);
+        } catch (err) {
+          console.error('[Import Service] Sync language processing failed:', err);
+        }
+      });
+    }
 
     return job;
   }

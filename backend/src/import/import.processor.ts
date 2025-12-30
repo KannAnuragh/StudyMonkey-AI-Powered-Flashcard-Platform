@@ -25,6 +25,11 @@ export class ImportProcessor {
       topic,
       deckId,
       filename,
+      text,
+      languageCode,
+      cardTypes,
+      level,
+      sourceType,
     } = job.data;
 
     console.log(`[Import Processor] Job ${jobId} started`);
@@ -55,7 +60,12 @@ export class ImportProcessor {
       }
 
       const cardTopic = topic || url || filename || 'Imported deck';
-      const cards = await this.generateCards(cardTopic, content);
+      let cards: any[];
+      if (sourceType === 'language' || languageCode) {
+        cards = await this.generateLanguageCards(cardTopic, content, languageCode, cardTypes, level);
+      } else {
+        cards = await this.generateCards(cardTopic, content);
+      }
 
       await this.prisma.importJob.update({
         where: { id: jobId },
@@ -72,7 +82,7 @@ export class ImportProcessor {
             type: card.type || 'basic',
             front: card.front,
             back: card.back,
-            fields: card.fields || {},
+            fields: { ...(card.fields || {}), languageCode: languageCode || card.languageCode || undefined },
             sourceUrl: url,
             sourceExcerpt: card.excerpt,
             confidenceScore: card.confidence ?? null,
@@ -151,6 +161,22 @@ export class ImportProcessor {
 
   private async generateCards(topic: string, text: string) {
     const cards = await this.ollama.generateFlashcards(text, topic, 30);
+    return cards.map((card) => ({
+      ...card,
+      excerpt: text.slice(0, 200),
+      confidence: 0.8,
+    }));
+  }
+
+  private async generateLanguageCards(topic: string, text: string, languageCode: string, cardTypes: string[] = ['vocab','sentence','cloze','grammar'], level: string = 'beginner') {
+    const cards = await this.ollama.generateLanguageFlashcards({
+      text,
+      topic,
+      languageCode,
+      cardTypes,
+      level,
+      count: 40,
+    });
     return cards.map((card) => ({
       ...card,
       excerpt: text.slice(0, 200),

@@ -13,11 +13,19 @@ interface Card {
   schedulerState?: Record<string, unknown>;
 }
 
+interface DeckInfo {
+  id: string;
+  title: string;
+  mode?: string;
+  languageCode?: string;
+}
+
 export default function DeckCardsPage() {
   const params = useParams();
   const deckId = params.deckId as string;
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(false);
+  const [deckInfo, setDeckInfo] = useState<DeckInfo | null>(null);
   const [editingCard, setEditingCard] = useState<Card | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ front: '', back: '' });
@@ -27,6 +35,8 @@ export default function DeckCardsPage() {
   const loadCards = async () => {
     try {
       setLoading(true);
+      const deckRes = await api.get(`/decks/${deckId}`);
+      setDeckInfo(deckRes.data);
       const res = await api.get(`/decks/${deckId}/cards`);
       setCards(res.data);
     } catch {
@@ -104,6 +114,12 @@ export default function DeckCardsPage() {
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1 min-w-0">
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">Cards</h1>
+              {deckInfo?.mode === 'language' && (
+                <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-amber-50 text-amber-700 px-3 py-1 text-xs">
+                  <span>Language Mode</span>
+                  {deckInfo.languageCode && <span className="font-semibold">({deckInfo.languageCode})</span>}
+                </div>
+              )}
               <p className="text-sm sm:text-base text-slate-600 mt-1 sm:mt-2">
                 {cards.length} {cards.length === 1 ? 'card' : 'cards'} in this deck
               </p>

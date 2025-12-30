@@ -1,0 +1,520 @@
+==========================================
+AI FLASH CARD APPLICATION - ARCHITECTURE
+==========================================
+
+TABLE OF CONTENTS
+-----------------
+1. Application Function & Purpose
+2. System Architecture & Pipeline
+3. Technologies & Their Roles
+4. Important Code Files & Structure
+5. Data Flow & Processing
+6. API Endpoints Overview
+
+==========================================
+1. APPLICATION FUNCTION & PURPOSE
+==========================================
+
+OVERVIEW:
+---------
+An intelligent flashcard application that uses AI to help students create, 
+organize, and study flashcards with spaced repetition algorithms. The system 
+can automatically generate flashcards from various content sources (PDF, text, 
+URLs) using AI models.
+
+KEY FEATURES:
+-------------
+- User authentication & authorization (JWT-based)
+- AI-powered flashcard generation from multiple sources
+- Spaced repetition algorithm for optimized learning
+- Deck organization with tags and topics
+- Language learning mode support
+- Performance analytics and insights
+- Import/Export functionality (Anki/Quizlet compatible)
+- Real-time study session tracking
+- Premium subscription with UPI payment integration
+
+USER WORKFLOW:
+--------------
+1. Sign up / Login
+2. Create or import decks
+3. AI generates flashcards from content (PDF, URL, text)
+4. Study using spaced repetition
+5. Track progress and analytics
+6. Upgrade to premium for advanced features
+
+==========================================
+2. SYSTEM ARCHITECTURE & PIPELINE
+==========================================
+
+HIGH-LEVEL ARCHITECTURE:
+------------------------
+┌─────────────┐         ┌──────────────┐         ┌─────────────┐
+│   Frontend  │ ◄────── │   Backend    │ ◄────── │  Database   │
+│  (Next.js)  │  HTTP   │  (NestJS)    │  Prisma │ (PostgreSQL)│
+└─────────────┘         └──────────────┘         └─────────────┘
+      │                       │                         │
+      │                       │                         │
+      ▼                       ▼                         ▼
+┌─────────────┐         ┌──────────────┐         ┌─────────────┐
+│   Browser   │         │   AI/Ollama  │         │    Redis    │
+│   Storage   │         │   Service    │         │   (Queue)   │
+└─────────────┘         └──────────────┘         └─────────────┘
+
+DATA FLOW PIPELINE:
+-------------------
+
+1. USER REGISTRATION/LOGIN:
+   User → Frontend → Backend (Auth) → Database → JWT Token → Frontend
+
+2. CONTENT IMPORT & AI GENERATION:
+   User uploads → Frontend → Backend → BullMQ Queue → Worker Process
+   Worker → Ollama AI → Flashcard Generation → Database → Frontend Updates
+
+3. STUDY SESSION:
+   User studies → Frontend → Backend → Spaced Repetition Calc → Database
+   Analytics Update → Performance Tracking
+
+4. PAYMENT FLOW:
+   User selects plan → Frontend → Payment Service (Go) → UPI Gateway
+   Verification → Backend → Update User Plan → Database
+
+WORKER PIPELINE (Import Processing):
+-------------------------------------
+1. File Upload (PDF/Text/URL)
+2. Queue Job Creation (BullMQ)
+3. Worker Picks Up Job
+4. Content Extraction (PDF Parse/Cheerio/Tesseract)
+5. AI Processing (Ollama/OpenAI)
+6. Flashcard Generation
+7. Database Storage
+8. User Notification
+
+==========================================
+3. TECHNOLOGIES & THEIR ROLES
+==========================================
+
+FRONTEND STACK:
+---------------
+Technology: Next.js 16 (React Framework)
+Purpose: Server-side rendering, routing, and UI framework
+Why Required: Provides SEO benefits, fast page loads, and modern React features
+
+Technology: TypeScript
+Purpose: Type safety and better developer experience
+Why Required: Prevents runtime errors, improves code quality
+
+Technology: Tailwind CSS
+Purpose: Utility-first CSS framework
+Why Required: Rapid UI development with consistent styling
+
+Technology: Radix UI
+Purpose: Accessible UI components
+Why Required: Provides accessible primitives for dialogs, dropdowns, switches
+
+Technology: Framer Motion
+Purpose: Animation library
+Why Required: Smooth transitions and interactive animations
+
+Technology: Axios
+Purpose: HTTP client
+Why Required: API communication with backend
+
+Technology: Zustand
+Purpose: State management
+Why Required: Lightweight global state management
+
+Technology: Recharts
+Purpose: Charting library
+Why Required: Visualizing analytics and progress data
+
+BACKEND STACK:
+--------------
+Technology: NestJS (Node.js Framework)
+Purpose: Backend API framework with TypeScript support
+Why Required: Structured architecture, dependency injection, modular design
+
+Technology: TypeScript
+Purpose: Type-safe backend code
+Why Required: Reduces bugs, better IDE support
+
+Technology: Prisma
+Purpose: ORM (Object-Relational Mapping)
+Why Required: Type-safe database access, migrations, schema management
+
+Technology: PostgreSQL
+Purpose: Relational database
+Why Required: Stores users, decks, cards, sessions, analytics
+
+Technology: Redis
+Purpose: In-memory data store
+Why Required: Job queue management, caching, session storage
+
+Technology: BullMQ
+Purpose: Job queue system
+Why Required: Background processing for AI generation tasks
+
+Technology: Passport.js + JWT
+Purpose: Authentication middleware
+Why Required: Secure user authentication and authorization
+
+Technology: Bcrypt
+Purpose: Password hashing
+Why Required: Secure password storage
+
+Technology: Ollama SDK
+Purpose: Local AI model integration
+Why Required: Generates flashcards using local LLM models
+
+Technology: OpenAI SDK
+Purpose: Cloud AI integration (alternative)
+Why Required: Provides GPT models for premium features
+
+Technology: PDF-Parse
+Purpose: PDF text extraction
+Why Required: Extracts content from PDF uploads
+
+Technology: Cheerio
+Purpose: HTML parsing
+Why Required: Web scraping for URL imports
+
+Technology: Tesseract.js
+Purpose: OCR (Optical Character Recognition)
+Why Required: Extracts text from images
+
+INFRASTRUCTURE:
+---------------
+Technology: Docker & Docker Compose
+Purpose: Containerization
+Why Required: Consistent dev/prod environments, easy deployment
+
+Technology: Redis
+Purpose: Message broker and cache
+Why Required: Job queue for background tasks
+
+PAYMENT SERVICE:
+----------------
+Technology: Go (Golang)
+Purpose: Payment processing microservice
+Why Required: High-performance payment handling, UPI integration
+
+==========================================
+4. IMPORTANT CODE FILES & STRUCTURE
+==========================================
+
+BACKEND CRITICAL FILES:
+-----------------------
+
+1. prisma/schema.prisma
+   Purpose: Database schema definition
+   Defines: User, Deck, Card, StudySession, Review, Analytics models
+   Importance: Core data structure, single source of truth
+
+2. src/main.ts
+   Purpose: Application entry point
+   Configures: CORS, global pipes, port binding
+   Importance: Bootstrap configuration
+
+3. src/auth/auth.service.ts
+   Purpose: Authentication logic
+   Handles: User registration, login, JWT generation
+   Importance: Security foundation
+
+4. src/auth/jwt.strategy.ts
+   Purpose: JWT validation strategy
+   Handles: Token validation, user extraction
+   Importance: Protects all routes
+
+5. src/import/import.service.ts
+   Purpose: Content import orchestration
+   Handles: PDF/URL/Text processing
+   Importance: Core feature - content ingestion
+
+6. src/import/import.processor.ts
+   Purpose: Background job processing
+   Handles: Async AI generation tasks
+   Importance: Performance - offloads heavy processing
+
+7. src/import/ollama.service.ts
+   Purpose: AI model integration
+   Handles: Communication with Ollama/OpenAI
+   Importance: AI-powered flashcard generation
+
+8. src/cards/cards.service.ts
+   Purpose: Flashcard management
+   Handles: CRUD operations for cards
+   Importance: Core entity management
+
+9. src/decks/decks.service.ts
+   Purpose: Deck management
+   Handles: CRUD operations for decks
+   Importance: Organizational structure
+
+10. src/study/study.service.ts
+    Purpose: Study session logic
+    Handles: Spaced repetition algorithm, progress tracking
+    Importance: Learning algorithm implementation
+
+11. src/analytics/analytics.service.ts
+    Purpose: Analytics calculation
+    Handles: Performance metrics, insights
+    Importance: User engagement and retention
+
+12. src/prisma/prisma.service.ts
+    Purpose: Database connection singleton
+    Handles: Prisma client lifecycle
+    Importance: Database access layer
+
+FRONTEND CRITICAL FILES:
+------------------------
+
+1. app/layout.tsx
+   Purpose: Root layout component
+   Defines: Global layout, metadata, providers
+   Importance: Application shell
+
+2. app/page.tsx
+   Purpose: Landing/Home page
+   Importance: First user interaction
+
+3. app/(auth)/login/page.tsx & signup/page.tsx
+   Purpose: Authentication pages
+   Handles: User registration and login
+   Importance: User onboarding
+
+4. app/(dashboard)/dashboard/page.tsx
+   Purpose: Main dashboard
+   Displays: User overview, recent decks
+   Importance: Central navigation hub
+
+5. app/(dashboard)/decks/page.tsx
+   Purpose: Deck management interface
+   Handles: Deck creation, listing, deletion
+   Importance: Content organization
+
+6. app/(dashboard)/study/page.tsx
+   Purpose: Study interface
+   Handles: Card review, spaced repetition UI
+   Importance: Core learning experience
+
+7. app/(dashboard)/analytics/page.tsx
+   Purpose: Analytics dashboard
+   Displays: Charts, insights, progress
+   Importance: User motivation and insights
+
+8. app/pricing/page.tsx
+   Purpose: Pricing and payment page
+   Handles: Plan selection, UPI payment
+   Importance: Monetization
+
+9. components/ui/import-modal.tsx
+   Purpose: Import content modal
+   Handles: File upload, URL input
+   Importance: Content ingestion UI
+
+10. lib/api.ts
+    Purpose: API client configuration
+    Defines: Axios instance, interceptors
+    Importance: All backend communication
+
+11. components/RazorpayButton.tsx
+    Purpose: Payment integration component
+    Handles: UPI payment flow
+    Importance: Payment processing
+
+CONFIGURATION FILES:
+--------------------
+
+1. backend/.env
+   Purpose: Environment variables
+   Contains: Database URL, JWT secret, API keys
+   Importance: Configuration secrets
+
+2. backend/prisma/migrations/
+   Purpose: Database version control
+   Contains: SQL migration files
+   Importance: Database evolution tracking
+
+3. docker-compose.yml
+   Purpose: Multi-container setup
+   Defines: PostgreSQL, Redis services
+   Importance: Local development environment
+
+4. backend/nest-cli.json
+   Purpose: NestJS CLI configuration
+   Importance: Build and development settings
+
+5. frontend/next.config.ts
+   Purpose: Next.js configuration
+   Importance: Build and runtime settings
+
+6. frontend/tailwind.config.js
+   Purpose: Tailwind CSS configuration
+   Importance: Design system customization
+
+==========================================
+5. DATA FLOW & PROCESSING
+==========================================
+
+AUTHENTICATION FLOW:
+--------------------
+1. User submits credentials
+2. Backend validates against database
+3. Bcrypt compares hashed password
+4. JWT token generated and signed
+5. Token stored in frontend (localStorage/cookie)
+6. All subsequent requests include JWT in Authorization header
+7. JwtStrategy validates token on protected routes
+
+IMPORT & AI GENERATION FLOW:
+-----------------------------
+1. User uploads file/URL/text via import-modal
+2. Frontend sends multipart/form-data to /import/start
+3. Backend creates ImportJob record (status: pending)
+4. Job added to BullMQ queue
+5. Worker process picks up job
+6. Content extraction based on type:
+   - PDF: pdf-parse extracts text
+   - URL: axios + cheerio scrapes content
+   - Image: tesseract.js performs OCR
+7. Extracted text sent to Ollama service
+8. AI generates Q&A pairs in JSON format
+9. Cards created in database linked to deck
+10. ImportJob updated (status: completed)
+11. Frontend polls or receives real-time update
+
+STUDY SESSION FLOW:
+-------------------
+1. User starts study session for a deck
+2. Backend retrieves cards due for review (spaced repetition)
+3. Frontend displays cards one by one
+4. User rates difficulty (Again/Hard/Good/Easy)
+5. Backend calculates next review date using SM-2 algorithm
+6. Review record created in database
+7. Card's repetition data updated (interval, easeFactor)
+8. Session statistics updated in real-time
+9. Analytics aggregated for dashboard display
+
+SPACED REPETITION ALGORITHM:
+-----------------------------
+Algorithm: SuperMemo SM-2
+Variables:
+- interval: days until next review
+- repetitions: consecutive correct answers
+- easeFactor: difficulty multiplier (1.3 - 2.5)
+
+Logic:
+if rating >= 3 (Good):
+  interval = interval * easeFactor
+  repetitions++
+  easeFactor += adjustment based on rating
+else:
+  interval = 1 day
+  repetitions = 0
+
+==========================================
+6. API ENDPOINTS OVERVIEW
+==========================================
+
+AUTHENTICATION:
+---------------
+POST /auth/signup          - Register new user
+POST /auth/login           - User login (returns JWT)
+GET  /auth/me              - Get current user profile
+
+DECKS:
+------
+GET    /decks              - List all decks for user
+POST   /decks              - Create new deck
+GET    /decks/:id          - Get deck details
+PATCH  /decks/:id          - Update deck
+DELETE /decks/:id          - Delete deck
+
+CARDS:
+------
+GET    /cards/deck/:deckId - Get cards in deck
+POST   /cards              - Create card
+PATCH  /cards/:id          - Update card
+DELETE /cards/:id          - Delete card
+
+IMPORT:
+-------
+POST   /import/start       - Start import job
+GET    /import/status/:id  - Check import job status
+POST   /import/cancel/:id  - Cancel import job
+
+STUDY:
+------
+POST   /study/session      - Start study session
+POST   /study/review       - Submit card review
+GET    /study/due/:deckId  - Get cards due for review
+GET    /study/stats/:deckId- Get study statistics
+
+ANALYTICS:
+----------
+GET    /analytics/overview - User analytics overview
+GET    /analytics/deck/:id - Deck-specific analytics
+GET    /analytics/performance - Performance trends
+
+HEALTH:
+-------
+GET    /health             - Service health check
+GET    /health/db          - Database connection check
+
+==========================================
+TECHNOLOGY DEPENDENCY GRAPH
+==========================================
+
+Frontend Dependencies:
+Next.js → React → TypeScript → Node.js
+Tailwind CSS → PostCSS → Autoprefixer
+Axios → Backend API
+
+Backend Dependencies:
+NestJS → Express → Node.js → TypeScript
+Prisma → PostgreSQL (database connection)
+BullMQ → Redis (job queue)
+Ollama SDK → Ollama Service (AI)
+Passport → JWT (authentication)
+
+Infrastructure:
+Docker → PostgreSQL + Redis containers
+Prisma Migrate → Database schema management
+
+==========================================
+KEY DESIGN DECISIONS
+==========================================
+
+1. WHY NESTJS?
+   - Modular architecture (easy to scale)
+   - Built-in dependency injection
+   - TypeScript-first approach
+   - Excellent for enterprise applications
+
+2. WHY PRISMA?
+   - Type-safe database queries
+   - Automatic migrations
+   - Great developer experience
+   - Schema as single source of truth
+
+3. WHY BULLMQ?
+   - Reliable job processing
+   - Redis-backed (fast)
+   - Built-in retry mechanisms
+   - Ideal for AI generation tasks (long-running)
+
+4. WHY NEXT.JS?
+   - Server-side rendering (SEO)
+   - File-based routing (simple)
+   - API routes (full-stack capability)
+   - Great performance
+
+5. WHY LOCAL AI (OLLAMA)?
+   - Privacy (data stays local)
+   - Cost-effective (no API fees)
+   - Fast inference
+   - Customizable models
+
+==========================================
+END OF ARCHITECTURE GUIDE
+==========================================

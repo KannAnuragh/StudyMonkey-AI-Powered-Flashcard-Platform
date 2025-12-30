@@ -5,6 +5,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ImportUrlDto } from './dto/import-url.dto';
 import { ImportFileDto } from './dto/import-file.dto';
+import { LanguageImportDto } from './dto/language-import.dto';
 
 @Controller('import')
 export class ImportController {
@@ -40,5 +41,11 @@ export class ImportController {
   @Get('ollama/status')
   async getOllamaStatus() {
     return this.ollamaService.getStatus();
+  }
+
+  @Post('language')
+  @UseGuards(AuthGuard('jwt'))
+  importLanguage(@Request() req, @Body() body: LanguageImportDto) {
+    return this.importService.importLanguageText(req.user.userId, body);
   }
 }

@@ -42,6 +42,8 @@ model Deck {
   tags        String[]
   topic       String?
   difficulty  String   @default("medium") // beginner, medium, advanced
+  mode        String   @default("standard") // standard, language
+  languageCode String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -61,6 +63,7 @@ model Card {
   back           String
   fields         Json?    // flexible fields
   mediaRefs      Json?    // array of {type, url, caption}
+  languageCode   String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   sourceUrl      String?

@@ -1,0 +1,131 @@
+===========================================
+AI FLASH CARD APPLICATION - SETUP GUIDE
+===========================================
+
+PREREQUISITES
+-------------
+1. Node.js (v18 or higher)
+2. npm or yarn
+3. Docker and Docker Compose
+4. Go (for payment service - optional)
+
+STEP-BY-STEP SETUP INSTRUCTIONS
+--------------------------------
+
+1. NAVIGATE TO PROJECT
+   cd "c:\project\ai flash card"
+
+2. START DATABASE SERVICES
+   docker-compose up -d
+   
+   This starts:
+   - PostgreSQL on port 5432
+   - Redis on port 6379
+
+3. INSTALL BACKEND DEPENDENCIES
+   cd backend
+   npm install
+   
+4. INSTALL FRONTEND DEPENDENCIES
+   cd ..\frontend
+   npm install
+
+5. VERIFY ENVIRONMENT FILES
+   
+   Backend (.env in backend folder) - Already configured:
+   -------------------------------------------------------
+   DATABASE_URL="postgresql://postgres:1234@localhost:5432/srs_db"
+   JWT_SECRET="dev-secret-key-123"
+   PORT=3001
+   REDIS_URL="redis://localhost:6379"
+   OLLAMA_HOST=http://localhost:11434
+   OLLAMA_MODEL=qwen2.5:0.5b
+   
+   Frontend (.env.local in frontend folder) - Already configured:
+   ---------------------------------------------------------------
+   NEXT_PUBLIC_API_URL=http://localhost:3001
+
+6. RUN DATABASE MIGRATIONS
+   cd backend
+   npx prisma migrate deploy
+   npx prisma generate
+
+7. START THE BACKEND SERVER
+   cd backend
+   npm run start:dev
+   
+   Backend will run on: http://localhost:3001
+
+8. START THE FRONTEND APPLICATION
+   Open a new terminal window:
+   cd frontend
+   npm run dev
+   
+   Frontend will run on: http://localhost:3000
+
+9. OPTIONAL: START PAYMENT SERVICE
+   cd payment-service
+   go run main.go
+   
+   Payment service will run on: http://localhost:8080
+
+ACCESSING THE APPLICATION
+--------------------------
+Open your browser and navigate to:
+http://localhost:3000
+
+You can now:
+- Sign up for a new account
+- Create decks and flash cards
+- Study your cards
+- Import content (requires Ollama for AI features)
+
+TROUBLESHOOTING
+---------------
+- If backend fails: Ensure Docker containers are running (docker ps)
+- If frontend fails: Ensure backend is running first
+- If database connection fails: Run "docker-compose up -d"
+- Port conflicts: Stop conflicting services or change PORT in .env files
+- Redis connection issues: Verify Redis container is running
+
+QUICK START COMMANDS (3 Terminals)
+-----------------------------------
+Terminal 1 (Backend):
+cd "c:\project\ai flash card\backend"
+npm run start:dev
+
+Terminal 2 (Frontend):
+cd "c:\project\ai flash card\frontend"
+npm run dev
+
+Terminal 3 (Optional - Payment):
+cd "c:\project\ai flash card\payment-service"
+go run main.go
+
+USEFUL COMMANDS
+---------------
+View running containers:
+  docker ps
+
+Stop all containers:
+  docker-compose down
+
+Reset database:
+  cd backend
+  npx prisma migrate reset
+
+View database:
+  cd backend
+  npx prisma studio
+
+Build for production:
+  Backend: cd backend && npm run build && npm run start
+  Frontend: cd frontend && npm run build && npm run start
+
+SYSTEM STATUS
+-------------
+✅ All TypeScript errors fixed
+✅ Environment files configured
+✅ Database migrations ready
+✅ Docker services configured
+✅ Port configuration aligned (Backend: 3001, Frontend: 3000)

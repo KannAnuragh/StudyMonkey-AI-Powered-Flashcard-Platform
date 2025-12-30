@@ -12,6 +12,8 @@ export class DecksService {
         title: dto.title,
         description: dto.description,
         visibility: dto.visibility,
+        mode: dto.mode || 'standard',
+        languageCode: dto.languageCode,
         ownerId: userId,
       },
     });

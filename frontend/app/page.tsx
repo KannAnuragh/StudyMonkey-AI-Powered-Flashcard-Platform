@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Brain, Sparkles, Layers, Zap, ArrowUpRight, CheckCircle, Clock, Shield, Menu, X } from 'lucide-react';
 import { useState } from 'react';
+import { Pricing } from '@/components/ui/pricing';
+import { pricingPlans } from '@/lib/pricing-data';
 
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -24,6 +26,9 @@ export default function Home() {
         
         {/* Desktop Navigation */}
         <div className="hidden sm:flex items-center gap-3">
+          <Link href="/pricing">
+            <Button variant="ghost" className="px-4">Pricing</Button>
+          </Link>
           <Link href="/login">
             <Button variant="ghost" className="px-4">Sign In</Button>
           </Link>
@@ -48,6 +53,9 @@ export default function Home() {
             className="absolute top-full left-0 right-0 bg-white border-b border-slate-200 shadow-lg sm:hidden transition-all"
           >
             <div className="flex flex-col gap-2 p-4">
+              <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="w-full">
+                <Button variant="ghost" className="w-full justify-start h-11">Pricing</Button>
+              </Link>
               <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="w-full">
                 <Button variant="ghost" className="w-full justify-start h-11">Sign In</Button>
               </Link>
@@ -177,6 +185,22 @@ export default function Home() {
                 title="Adaptive timing"
                 desc="Smart intervals adjust based on confidence and speed so you don't waste reps on what you already know."
               />
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing */}
+        <section id="pricing" className="px-6 lg:px-12 py-20">
+          <div className="max-w-6xl mx-auto">
+            <Pricing
+              plans={pricingPlans}
+              title="Plans for every learner"
+              description={`Free, Study Beginners, and Experts tiers built for UPI payments and fast onboarding.`}
+            />
+            <div className="text-center">
+              <Link href="/pricing" className="inline-flex items-center gap-2 text-cyan-700 font-semibold hover:gap-3 transition-all">
+                View full pricing page <ArrowUpRight className="w-4 h-4" />
+              </Link>
             </div>
           </div>
         </section>
