@@ -97,7 +97,7 @@ export default function LoginPage() {
               </div>
               {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{error}</div>}
               <Button 
-                className="w-full h-12 bg-linear-to-r from-cyan-500 to-blue-600 shadow-lg hover:shadow-xl transition-all" 
+                className="w-full h-12 bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-700 hover:to-blue-800 active:from-cyan-800 active:to-blue-900 text-white font-extrabold shadow-lg hover:shadow-xl transition-all" 
                 type="submit" 
                 disabled={isLoading}
               >

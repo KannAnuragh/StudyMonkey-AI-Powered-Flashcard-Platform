@@ -96,7 +96,7 @@ export default function SignupPage() {
               </div>
               {error && <div className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">{error}</div>}
               <Button 
-                className="w-full h-12 bg-linear-to-r from-amber-400 via-rose-400 to-cyan-400 text-slate-900 font-semibold shadow-lg hover:shadow-xl transition-all" 
+                className="w-full h-12 bg-gradient-to-r from-orange-500 via-pink-500 to-purple-600 hover:from-orange-600 hover:via-pink-600 hover:to-purple-700 active:from-orange-700 active:via-pink-700 active:to-purple-800 text-white font-extrabold shadow-lg hover:shadow-xl transition-all" 
                 type="submit" 
                 disabled={isLoading}
               >

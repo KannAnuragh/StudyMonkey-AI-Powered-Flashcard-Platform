@@ -55,12 +55,15 @@ export default function Dashboard() {
           <span className="hidden sm:inline">StudyMonkey</span>
         </Link>
         <div className="flex items-center gap-2 sm:gap-3">
-          <Link href="/premium" title="Go Premium">
-            <Button size="sm" variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50">
-              <span className="text-lg mr-1">👑</span>
-              <span className="hidden sm:inline">Premium</span>
-            </Button>
-          </Link>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="border-amber-500 text-amber-600 hover:bg-amber-50"
+            onClick={() => router.push('/pricing')}
+            title="Go Premium"
+          >
+            <span className="hidden sm:inline">Premium</span>
+          </Button>
           <Link href="/decks/new" title="New Deck">
             <Button size="sm" className="bg-linear-to-r from-cyan-500 to-blue-600 text-white">
               <Plus className="w-4 h-4 sm:mr-2" />

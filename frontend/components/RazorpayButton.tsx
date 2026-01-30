@@ -99,7 +99,7 @@ export default function UpiPayment({ amount, userId, onSuccess }: UpiPaymentProp
       <button
         onClick={handleCreatePayment}
         disabled={loading}
-        className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
+        className="px-6 py-3 bg-gradient-to-r from-blue-700 to-purple-700 hover:from-blue-800 hover:to-purple-800 active:from-blue-900 active:to-purple-900 text-white font-extrabold rounded-lg shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
       >
         {loading ? (
           <span>Creating Payment...</span>
@@ -191,7 +191,7 @@ export default function UpiPayment({ amount, userId, onSuccess }: UpiPaymentProp
           <button
             onClick={handleVerifyPayment}
             disabled={verifying || !transactionId.trim()}
-            className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full px-4 py-3 bg-green-700 hover:bg-green-800 active:bg-green-900 text-white font-extrabold rounded-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
           >
             {verifying ? 'Verifying...' : 'Verify Payment & Activate Premium'}
           </button>

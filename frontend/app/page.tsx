@@ -33,7 +33,7 @@ export default function Home() {
             <Button variant="ghost" className="px-4">Sign In</Button>
           </Link>
           <Link href="/signup">
-            <Button className="px-4 bg-linear-to-r from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/20">
+            <Button className="px-4 bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-700 hover:to-blue-800 text-white font-bold shadow-lg shadow-cyan-500/20">
               Join Free
             </Button>
           </Link>
@@ -216,7 +216,7 @@ export default function Home() {
               </div>
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <Link href="/signup" className="w-full sm:w-auto">
-                  <Button size="lg" className="w-full sm:w-auto h-12 rounded-full px-8 bg-linear-to-r from-cyan-500 to-blue-600 shadow-lg shadow-blue-500/30">Create my account</Button>
+                  <Button size="lg" className="w-full sm:w-auto h-12 rounded-full px-8 bg-gradient-to-r from-cyan-600 to-blue-700 hover:from-cyan-700 hover:to-blue-800 text-white font-extrabold shadow-lg shadow-blue-500/30">Create my account</Button>
                 </Link>
                 <Link href="/login" className="w-full sm:w-auto">
                   <Button variant="outline" size="lg" className="w-full sm:w-auto h-12 rounded-full px-8">I already have one</Button>
